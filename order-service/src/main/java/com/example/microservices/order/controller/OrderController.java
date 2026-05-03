@@ -31,7 +31,7 @@ public class OrderController {
 
     @GetMapping
     @Operation(summary = "List orders, optionally filtered by user id")
-    public List<OrderResponse> findAll(@RequestParam(required = false) Long userId) {
+    public List<OrderResponse> findAll(@RequestParam(name = "userId", required = false) Long userId) {
         if (userId != null) {
             return service.findByUserId(userId);
         }
@@ -40,7 +40,7 @@ public class OrderController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get an order by id")
-    public OrderResponse findById(@PathVariable Long id) {
+    public OrderResponse findById(@PathVariable("id") Long id) {
         return service.findById(id);
     }
 
@@ -57,13 +57,13 @@ public class OrderController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an order and validate the user with RestTemplate")
-    public OrderResponse update(@PathVariable Long id, @Valid @RequestBody OrderRequest request) {
+    public OrderResponse update(@PathVariable("id") Long id, @Valid @RequestBody OrderRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete an order")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }

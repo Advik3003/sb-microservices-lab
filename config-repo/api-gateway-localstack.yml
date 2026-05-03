@@ -1,0 +1,5 @@
+gateway:
+  public-base-url: http://localhost:8080
+
+localstack:
+  endpoint: http://localhost:4566

@@ -1,0 +1,2 @@
+gateway:
+  public-base-url: ${GATEWAY_PUBLIC_BASE_URL}

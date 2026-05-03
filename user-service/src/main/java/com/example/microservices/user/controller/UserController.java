@@ -36,7 +36,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a user by id")
-    public UserResponse findById(@PathVariable Long id) {
+    public UserResponse findById(@PathVariable("id") Long id) {
         return service.findById(id);
     }
 
@@ -53,13 +53,13 @@ public class UserController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a user")
-    public UserResponse update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
+    public UserResponse update(@PathVariable("id") Long id, @Valid @RequestBody UserRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a user")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }

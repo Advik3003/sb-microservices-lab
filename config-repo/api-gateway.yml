@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: api-gateway
+
+app:
+  message: Loaded from config server for api-gateway

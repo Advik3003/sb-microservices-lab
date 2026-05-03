@@ -53,6 +53,12 @@ services:
     depends_on:
       - loki
 
+  zipkin:
+    image: openzipkin/zipkin:3.4
+    container_name: ms-zipkin
+    ports:
+      - "9411:9411"
+
   localstack:
     image: localstack/localstack:3.8
     container_name: ms-localstack
