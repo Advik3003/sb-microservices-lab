@@ -15,7 +15,7 @@ A small learning project that demonstrates common microservices concepts with CR
 Start infrastructure:
 
 ```bash
-docker compose up -d postgres-user postgres-order loki promtail grafana zipkin
+docker compose up -d postgres-user postgres-order loki promtail grafana zipkin otel-collector
 ```
 
 Run services in this order:
@@ -38,6 +38,7 @@ mvn -pl api-gateway spring-boot:run -Dspring-boot.run.profiles=local
 - User Swagger UI: http://localhost:8081/swagger-ui/index.html
 - Order Swagger UI: http://localhost:8082/swagger-ui/index.html
 - Grafana: http://localhost:3000
+- OpenTelemetry Collector OTLP HTTP: http://localhost:4318
 - Zipkin: http://localhost:9411
 
 ## Profiles

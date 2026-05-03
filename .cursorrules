@@ -7,6 +7,7 @@ Project conventions:
 - Put HTTP input validation in request DTOs with Jakarta Validation annotations.
 - Return API errors through the service-level global exception handler.
 - Keep local logs human-readable and centralised logs structured enough for collection by Promtail/Loki.
+- Prefer OpenTelemetry OTLP through the local collector for distributed tracing; keep Zipkin as the local trace UI.
 - Add or update documentation in `docs/` whenever a new microservices concept is introduced.
 - Prefer explicit profiles: `local`, `dev`, `prod`, and `localstack`.
 - Avoid adding business complexity that distracts from the microservices concept being taught.

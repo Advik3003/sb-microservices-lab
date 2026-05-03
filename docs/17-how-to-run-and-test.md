@@ -16,19 +16,20 @@ Run all commands from the project root.
 Start PostgreSQL, logging, tracing, and optional local cloud services:
 
 ```bash
-docker compose up -d postgres-user postgres-order loki promtail grafana zipkin localstack
+docker compose up -d postgres-user postgres-order loki promtail grafana zipkin otel-collector localstack
 ```
 
 Minimum required for CRUD:
 
 ```bash
-docker compose up -d postgres-user postgres-order zipkin
+docker compose up -d postgres-user postgres-order zipkin otel-collector
 ```
 
 Useful local URLs:
 
 - Grafana: `http://localhost:3000`
 - Loki: `http://localhost:3100`
+- OpenTelemetry Collector OTLP HTTP: `http://localhost:4318`
 - Zipkin: `http://localhost:9411`
 - LocalStack: `http://localhost:4566`
 
@@ -233,7 +234,15 @@ http://localhost:3000
 
 Use `admin/admin` locally. Add Loki as a data source if it is not already configured, then query service logs.
 
-## Step 9: Test Zipkin Traces
+## Step 9: Test OpenTelemetry And Zipkin Traces
+
+The services export traces to the OpenTelemetry Collector at:
+
+```text
+http://localhost:4318/v1/traces
+```
+
+The collector forwards those traces to Zipkin.
 
 Open Zipkin:
 
@@ -244,6 +253,13 @@ http://localhost:9411
 Send requests through the gateway, especially order create or update requests because they call `user-service`.
 
 Then click "Run Query" in Zipkin. You should see traces that show gateway, order service, and user service spans.
+
+If traces do not appear, check the collector:
+
+```bash
+docker compose ps otel-collector
+docker compose logs otel-collector
+```
 
 ## Step 10: Stop Everything
 

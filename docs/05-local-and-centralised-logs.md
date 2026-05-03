@@ -18,7 +18,7 @@ They write console logs and rolling file logs:
 
 The file pattern includes the service name, so central log tools can filter by service.
 
-Tracing is also connected to logs. After Zipkin tracing is enabled, log lines include `traceId` and `spanId`, which helps connect a log line to a distributed trace.
+Tracing is also connected to logs. After OpenTelemetry tracing is enabled, log lines include `traceId` and `spanId`, which helps connect a log line to a distributed trace in Zipkin.
 
 ## How Centralised Logs Are Implemented Locally
 

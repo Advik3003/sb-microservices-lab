@@ -1,4 +1,4 @@
-# Zipkin Distributed Tracing
+# Zipkin Trace Visualization
 
 ## Why Distributed Tracing
 
@@ -18,12 +18,15 @@ Distributed tracing helps answer:
 
 Zipkin stores and displays traces. A trace is the full journey of one request. A span is one timed operation inside that journey.
 
+In the current project, services do not send spans directly to Zipkin. They export traces with OpenTelemetry OTLP to the local OpenTelemetry Collector, and the collector forwards those traces to Zipkin.
+
 In this lab:
 
 - `api-gateway` creates or continues a trace for incoming requests.
 - `order-service` contributes spans for order API handling.
 - `user-service` contributes spans when it is called by the order service.
-- Zipkin receives spans at `http://localhost:9411/api/v2/spans`.
+- OpenTelemetry Collector receives OTLP spans at `http://localhost:4318/v1/traces`.
+- Zipkin receives collector-forwarded spans at `http://localhost:9411/api/v2/spans`.
 
 ## How It Is Implemented
 
@@ -36,20 +39,15 @@ zipkin:
     - "9411:9411"
 ```
 
-The request path services include these dependencies:
+It also starts the OpenTelemetry Collector:
 
-```xml
-<dependency>
-    <groupId>io.micrometer</groupId>
-    <artifactId>micrometer-tracing-bridge-brave</artifactId>
-</dependency>
-<dependency>
-    <groupId>io.zipkin.reporter2</groupId>
-    <artifactId>zipkin-reporter-brave</artifactId>
-</dependency>
+```yaml
+otel-collector:
+  image: otel/opentelemetry-collector-contrib:0.111.0
+  ports:
+    - "4317:4317"
+    - "4318:4318"
 ```
-
-`micrometer-tracing-bridge-brave` creates trace and span data. `zipkin-reporter-brave` sends that data to Zipkin.
 
 Each traced service has:
 
@@ -58,9 +56,9 @@ management:
   tracing:
     sampling:
       probability: 1.0
-  zipkin:
+  otlp:
     tracing:
-      endpoint: http://localhost:9411/api/v2/spans
+      endpoint: http://localhost:4318/v1/traces
 ```
 
 `probability: 1.0` means every request is traced. That is useful for local learning. In production, use a lower value such as `0.1` or configure sampling based on traffic and cost.
@@ -80,7 +78,7 @@ After tracing is enabled, Micrometer puts `traceId` and `spanId` into the loggin
 Start Zipkin:
 
 ```bash
-docker compose up -d zipkin
+docker compose up -d zipkin otel-collector
 ```
 
 Run the services, then send a request through the gateway:
@@ -101,7 +99,7 @@ To see a multi-service trace, create an order or update an order because those f
 
 ## Production Notes
 
-Zipkin is good for learning and can be used in production, but many teams now use OpenTelemetry for instrumentation and export traces to Zipkin, Jaeger, Tempo, Datadog, New Relic, or a cloud tracing service.
+Zipkin is good for learning and can be used in production, but many teams now use OpenTelemetry for instrumentation and send traces through an OpenTelemetry Collector to Zipkin, Jaeger, Tempo, Datadog, New Relic, or a cloud tracing service.
 
 Recommended production practices:
 

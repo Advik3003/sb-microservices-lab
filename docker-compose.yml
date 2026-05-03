@@ -59,6 +59,19 @@ services:
     ports:
       - "9411:9411"
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: ms-otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
+    volumes:
+      - ./docker/otel-collector/config.yml:/etc/otelcol-contrib/config.yml:ro
+    depends_on:
+      - zipkin
+
   localstack:
     image: localstack/localstack:3.8
     container_name: ms-localstack
