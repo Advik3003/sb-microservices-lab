@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: user-service
+
+app:
+  message: Loaded from config server for user-service

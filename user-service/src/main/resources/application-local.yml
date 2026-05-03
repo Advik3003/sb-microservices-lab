@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/userdb
+    username: user_service
+    password: user_pass
+    driver-class-name: org.postgresql.Driver
+
+logging:
+  level:
+    com.example.microservices.user: DEBUG

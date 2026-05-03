@@ -1,0 +1,68 @@
+services:
+  postgres-user:
+    image: postgres:16-alpine
+    container_name: ms-postgres-user
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: user_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+
+  postgres-order:
+    image: postgres:16-alpine
+    container_name: ms-postgres-order
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: order_service
+      POSTGRES_PASSWORD: order_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-order-data:/var/lib/postgresql/data
+
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: ms-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:3.2.1
+    container_name: ms-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./docker/promtail/config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/microservices:ro
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: ms-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - loki
+
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: ms-localstack
+    environment:
+      SERVICES: s3,sqs
+      DEBUG: "0"
+    ports:
+      - "4566:4566"
+
+volumes:
+  postgres-user-data:
+  postgres-order-data:
+  grafana-data:

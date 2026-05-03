@@ -1,0 +1,11 @@
+You are working in a learning-oriented Spring Boot microservices lab.
+
+Project conventions:
+- Use Java 17, Spring Boot 3, Spring Cloud, Maven, and PostgreSQL.
+- Keep each service small and focused on CRUD examples unless explicitly asked to expand behavior.
+- Put HTTP input validation in request DTOs with Jakarta Validation annotations.
+- Return API errors through the service-level global exception handler.
+- Keep local logs human-readable and centralised logs structured enough for collection by Promtail/Loki.
+- Add or update documentation in `docs/` whenever a new microservices concept is introduced.
+- Prefer explicit profiles: `local`, `dev`, `prod`, and `localstack`.
+- Avoid adding business complexity that distracts from the microservices concept being taught.

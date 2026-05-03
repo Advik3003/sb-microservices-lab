@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://dev-postgres:5432/orderdb
+    username: ${ORDER_DB_USERNAME:order_service}
+    password: ${ORDER_DB_PASSWORD:order_pass}
+    driver-class-name: org.postgresql.Driver
+
+logging:
+  level:
+    com.example.microservices.order: INFO

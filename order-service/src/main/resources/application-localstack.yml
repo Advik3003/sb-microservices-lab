@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5434/orderdb
+    username: order_service
+    password: order_pass
+    driver-class-name: org.postgresql.Driver
+
+localstack:
+  endpoint: http://localhost:4566
+  region: us-east-1

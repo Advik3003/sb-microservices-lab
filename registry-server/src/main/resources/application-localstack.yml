@@ -1,0 +1,6 @@
+eureka:
+  instance:
+    hostname: registry-localstack
+
+localstack:
+  endpoint: http://localhost:4566
