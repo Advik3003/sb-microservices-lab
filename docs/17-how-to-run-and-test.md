@@ -13,6 +13,15 @@ Run all commands from the project root.
 
 ## Step 1: Start Infrastructure
 
+If you want Docker to run the whole system, use:
+
+```bash
+mvn clean package -DskipTests
+docker compose -f docker-compose.full.yml up --build
+```
+
+The rest of this guide uses Maven for Spring Boot services and Docker for infrastructure, which is usually more convenient while learning and editing code.
+
 Start PostgreSQL, logging, tracing, and optional local cloud services:
 
 ```bash
@@ -89,6 +98,8 @@ curl http://localhost:8080/actuator/health
 curl http://localhost:8081/actuator/health
 curl http://localhost:8082/actuator/health
 ```
+
+OpenTelemetry is enabled from each service's base configuration, so it applies to `local`, `dev`, `prod`, and `localstack`. Override the collector endpoint per environment with `MANAGEMENT_OTLP_TRACING_ENDPOINT`.
 
 ## Step 4: Test User CRUD Through Gateway
 

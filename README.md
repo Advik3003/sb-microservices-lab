@@ -28,6 +28,13 @@ mvn -pl order-service spring-boot:run -Dspring-boot.run.profiles=local
 mvn -pl api-gateway spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
+Or run the whole stack with Docker:
+
+```bash
+mvn clean package -DskipTests
+docker compose -f docker-compose.full.yml up --build
+```
+
 ## URLs
 
 - Eureka: http://localhost:8761

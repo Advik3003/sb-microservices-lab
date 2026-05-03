@@ -1,0 +1,227 @@
+services:
+  postgres-user:
+    image: postgres:16-alpine
+    container_name: ms-postgres-user
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: user_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_service -d userdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-order:
+    image: postgres:16-alpine
+    container_name: ms-postgres-order
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: order_service
+      POSTGRES_PASSWORD: order_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-order-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_service -d orderdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: ms-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:3.2.1
+    container_name: ms-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./docker/promtail/config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/microservices:ro
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: ms-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - loki
+
+  zipkin:
+    image: openzipkin/zipkin:3.4
+    container_name: ms-zipkin
+    ports:
+      - "9411:9411"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: ms-otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
+    volumes:
+      - ./docker/otel-collector/config.yml:/etc/otelcol-contrib/config.yml:ro
+    depends_on:
+      - zipkin
+
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: ms-localstack
+    environment:
+      SERVICES: s3,sqs
+      DEBUG: "0"
+    ports:
+      - "4566:4566"
+
+  registry-server:
+    build:
+      context: ./registry-server
+    image: sb-microservices-lab/registry-server:latest
+    container_name: ms-registry-server
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      EUREKA_INSTANCE_HOSTNAME: registry-server
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8761:8761"
+    depends_on:
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  config-server:
+    build:
+      context: ./config-server
+    image: sb-microservices-lab/config-server:latest
+    container_name: ms-config-server
+    environment:
+      SPRING_PROFILES_ACTIVE: local,native
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-server:8761/eureka/
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./config-repo:/config-repo:ro
+    depends_on:
+      registry-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  user-service:
+    build:
+      context: ./user-service
+    image: sb-microservices-lab/user-service:latest
+    container_name: ms-user-service
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-user:5432/userdb
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-server:8761/eureka/
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  order-service:
+    build:
+      context: ./order-service
+    image: sb-microservices-lab/order-service:latest
+    container_name: ms-order-service
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-order:5432/orderdb
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-server:8761/eureka/
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    image: sb-microservices-lab/api-gateway:latest
+    container_name: ms-api-gateway
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-server:8761/eureka/
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      config-server:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres-user-data:
+  postgres-order-data:
+  grafana-data:
