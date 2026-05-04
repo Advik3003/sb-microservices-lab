@@ -1,5 +1,243 @@
 # Splunk
 
+## Hinglish: Splunk Ko Simple Language Me Samjho
+
+Splunk ek powerful search engine hai machine data ke liye. Machine data ka matlab application logs, server logs, audit events, errors, metrics, traces, security events, etc.
+
+Simple analogy:
+
+```text
+Google for application/server logs
+```
+
+Jaise Google me aap web pages search karte ho, Splunk me aap logs/events search karte ho.
+
+Example:
+
+```text
+Mujhe user-service ke ERROR logs dikhao
+Mujhe trace id abc123 ki full log journey dikhao
+Mujhe last 1 hour me kitne validation errors aaye dikhao
+```
+
+Splunk me search language ko SPL bolte hain: Search Processing Language.
+
+## Hinglish: Splunk Kyu Use Karte Hain
+
+Microservices me logs multiple jagah generate hote hain:
+
+```text
+api-gateway logs
+user-service logs
+order-service logs
+config-server logs
+registry-server logs
+```
+
+Agar production me issue aaye, manually har server/container me jaake logs check karna slow hai. Splunk central jagah deta hai:
+
+```text
+All logs -> Splunk -> Search/Dashboard/Alerts
+```
+
+Splunk se aap:
+
+- errors search kar sakte ho
+- dashboard bana sakte ho
+- alerts setup kar sakte ho
+- trace id se logs correlate kar sakte ho
+- security/audit logs analyze kar sakte ho
+
+## Hinglish: Splunk Is Project Me Kaha Fit Hota Hai
+
+Current project me local stack ye hai:
+
+```text
+Logs: Spring Boot -> log files -> Promtail -> Loki -> Grafana
+Traces: Spring Boot -> OpenTelemetry Collector -> Zipkin
+```
+
+Splunk use karna ho to flow aisa ho sakta hai:
+
+```text
+Logs: Spring Boot -> OpenTelemetry Collector / Fluent Bit / Universal Forwarder -> Splunk
+Traces: Spring Boot -> OpenTelemetry Collector -> Splunk Observability Cloud
+```
+
+Splunk Enterprise mostly logs/search ke liye use hota hai. Splunk Observability Cloud traces/metrics/APM ke liye use hota hai.
+
+## Hinglish Tutorial: Splunk Local Me Kaise Try Kare
+
+Step 1: Splunk container start karo.
+
+```bash
+docker run -d \
+  --name splunk \
+  -p 8000:8000 \
+  -p 8088:8088 \
+  -e SPLUNK_START_ARGS=--accept-license \
+  -e SPLUNK_PASSWORD=Password123! \
+  splunk/splunk:latest
+```
+
+Step 2: Splunk UI open karo.
+
+```text
+http://localhost:8000
+```
+
+Login:
+
+- username: `admin`
+- password: `Password123!`
+
+Step 3: HEC enable karo.
+
+HEC ka full form hai HTTP Event Collector. Ye HTTP endpoint hai jahan logs/events bheje ja sakte hain.
+
+Splunk UI me:
+
+1. Settings open karo.
+2. Data Inputs open karo.
+3. HTTP Event Collector select karo.
+4. Global Settings me HEC enable karo.
+5. Port `8088` rakho.
+
+Step 4: Token create karo.
+
+1. HTTP Event Collector me `New Token`.
+2. Name: `spring-boot-microservices`.
+3. Index: `main`.
+4. Token copy karo.
+
+Step 5: Test event bhejo.
+
+```bash
+curl -k http://localhost:8088/services/collector \
+  -H "Authorization: Splunk <HEC_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"event\":\"hello from spring boot lab\",\"sourcetype\":\"manual\"}"
+```
+
+Step 6: Splunk me search karo.
+
+```spl
+index=main "hello from spring boot lab"
+```
+
+Agar result aa gaya, HEC working hai.
+
+## Hinglish: Application Logs Splunk Me Kaise Bheje
+
+Option 1: Universal Forwarder.
+
+```text
+logs/*.log -> Splunk Universal Forwarder -> Splunk
+```
+
+Ye Splunk-native approach hai.
+
+Option 2: OpenTelemetry Collector.
+
+```text
+logs/*.log -> OpenTelemetry Collector -> Splunk HEC
+```
+
+Ye modern approach hai because same collector traces, metrics, logs sab handle kar sakta hai.
+
+Option 3: Fluent Bit.
+
+```text
+container stdout -> Fluent Bit -> Splunk HEC
+```
+
+Docker/Kubernetes me common hai.
+
+## Hinglish SPL Search Examples
+
+All Spring Boot logs:
+
+```spl
+index=main source="spring-boot"
+```
+
+Only errors:
+
+```spl
+index=main ERROR
+```
+
+User service logs:
+
+```spl
+index=main service=user-service
+```
+
+Trace id se search:
+
+```spl
+index=main trace=abc123
+```
+
+Validation failures:
+
+```spl
+index=main "Validation failed"
+```
+
+Errors count by service:
+
+```spl
+index=main ERROR
+| stats count by service
+```
+
+Layman tip: Splunk me search karte time pehle broad search karo, phir service, error, trace id, time range se narrow karo.
+
+## Hinglish Testing: Splunk Integration Kaise Verify Kare
+
+Test 1: Splunk UI open ho raha hai?
+
+```text
+http://localhost:8000
+```
+
+Test 2: HEC test event searchable hai?
+
+```spl
+index=main "hello from spring boot lab"
+```
+
+Test 3: App me error generate karo.
+
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"\",\"email\":\"bad-email\",\"phone\":\"1\"}"
+```
+
+Splunk search:
+
+```spl
+index=main "Validation failed"
+```
+
+Test 4: Trace id correlation.
+
+Log me trace id dekho:
+
+```text
+trace=<trace-id>
+```
+
+Splunk me search:
+
+```spl
+index=main trace=<trace-id>
+```
+
+Zipkin ya Splunk Observability me same trace open karo. Isse logs aur traces connect ho jate hain.
+
 ## What Is Splunk
 
 Splunk is an observability and log analytics platform. It collects machine data such as application logs, metrics, traces, audit events, and infrastructure events, then makes that data searchable through Splunk Search Processing Language, usually called SPL.

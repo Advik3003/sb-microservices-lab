@@ -1,5 +1,139 @@
 # Zipkin Trace Visualization
 
+## Hinglish: Zipkin Ko Simple Language Me Samjho
+
+Zipkin ek tracing UI hai. Ye batata hai ki ek request system ke andar kaun-kaun si services se guzri, kis service ne kitna time liya, aur request kaha slow ya fail hui.
+
+Simple analogy:
+
+```text
+Online food order tracking
+```
+
+Jab aap food order karte ho, app dikhata hai:
+
+```text
+Order placed -> Restaurant accepted -> Food prepared -> Rider picked -> Delivered
+```
+
+Zipkin microservices ke liye same tracking karta hai:
+
+```text
+api-gateway -> order-service -> user-service -> response
+```
+
+Trace ka matlab full journey. Span ka matlab journey ka ek step.
+
+```text
+Trace = poori request ki kahani
+Span = kahani ka ek scene
+```
+
+## Hinglish: Zipkin Kyu Use Karte Hain
+
+Logs me aapko individual service ki story milti hai. Zipkin me aapko request ki full journey milti hai.
+
+Example problem:
+
+User bolta hai: "Order create slow hai."
+
+Without Zipkin:
+
+- gateway logs dekho
+- order logs dekho
+- user logs dekho
+- manually timestamp match karo
+
+With Zipkin:
+
+- Zipkin open karo
+- trace dekho
+- immediately pata chalega kaunsa span slow hai
+
+Example:
+
+```text
+api-gateway: 20 ms
+order-service: 900 ms
+user-service: 50 ms
+```
+
+Yaha slow part `order-service` hai.
+
+## Hinglish: Is Project Me Zipkin Kaise Connected Hai
+
+Services direct Zipkin ko traces nahi bhejti. Professional setup me services OpenTelemetry Collector ko data bhejti hain, collector Zipkin ko forward karta hai.
+
+Flow:
+
+```text
+api-gateway/user-service/order-service
+  -> OpenTelemetry Collector
+  -> Zipkin
+```
+
+Local URLs:
+
+- OpenTelemetry Collector: `http://localhost:4318/v1/traces`
+- Zipkin UI: `http://localhost:9411`
+
+## Hinglish Tutorial: Zipkin Test Kaise Kare
+
+Step 1: Infra start karo.
+
+```bash
+docker compose up -d zipkin otel-collector
+```
+
+Step 2: Services run karo.
+
+```bash
+mvn -pl registry-server spring-boot:run -Dspring-boot.run.profiles=local
+mvn -pl config-server spring-boot:run -Dspring-boot.run.profiles=local
+mvn -pl user-service spring-boot:run -Dspring-boot.run.profiles=local
+mvn -pl order-service spring-boot:run -Dspring-boot.run.profiles=local
+mvn -pl api-gateway spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Step 3: Request bhejo.
+
+```bash
+curl http://localhost:8080/api/users
+curl http://localhost:8080/api/orders
+```
+
+Step 4: Multi-service trace generate karo.
+
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Zipkin User\",\"email\":\"zipkin.user@example.com\",\"phone\":\"9876543210\"}"
+```
+
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\":1,\"productName\":\"Zipkin Book\",\"quantity\":1,\"price\":299.00}"
+```
+
+Step 5: Zipkin open karo.
+
+```text
+http://localhost:9411
+```
+
+Click `Run Query`. Aapko services dikhni chahiye:
+
+- `api-gateway`
+- `order-service`
+- `user-service`
+- `config-server`
+- `registry-server`
+
+Step 6: Trace open karo.
+
+Dekho kaunsi service kitna time le rahi hai. Agar red/error span hai to wahi failure point hai.
+
 ## Why Distributed Tracing
 
 Logs tell you what happened inside one service. Distributed tracing shows how one request moves across services.

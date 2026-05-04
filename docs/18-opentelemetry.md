@@ -1,5 +1,230 @@
 # OpenTelemetry
 
+## Hinglish: OpenTelemetry Ko Simple Language Me Samjho
+
+OpenTelemetry ek standard tareeka hai application se observability data nikalne ka. Observability data ka matlab:
+
+- traces: ek request ki journey
+- metrics: numbers, jaise request count, latency, CPU
+- logs: text events, jaise error messages
+
+Is project me hum mainly tracing ke liye OpenTelemetry use kar rahe hain.
+
+Simple analogy:
+
+```text
+OpenTelemetry = courier pickup service
+Collector = sorting center
+Zipkin/Splunk/Jaeger/Tempo = final delivery location
+```
+
+Application data generate karti hai. OpenTelemetry us data ko standard format me collector ko bhejta hai. Collector decide karta hai final backend kaha hoga.
+
+## Hinglish: OpenTelemetry Kyu Important Hai
+
+Agar app direct Zipkin ko trace bhejti hai, to kal backend change hua to app config/dependency change karni padegi. Agar app OpenTelemetry OTLP bhejti hai, to app same rahegi. Sirf collector ka exporter change hoga.
+
+Example:
+
+```text
+Today: app -> collector -> Zipkin
+Tomorrow: app -> collector -> Grafana Tempo
+Future: app -> collector -> Splunk Observability Cloud
+```
+
+App code same. Collector config change.
+
+Ye senior/professional approach hai because application ko vendor-specific backend se loosely coupled rakhta hai.
+
+## Hinglish: Is Project Me OpenTelemetry Ka Flow
+
+Flow simple hai:
+
+```text
+Client request
+  -> api-gateway
+  -> user-service/order-service
+  -> OpenTelemetry exporter
+  -> OpenTelemetry Collector
+  -> Zipkin
+```
+
+All services traced hain:
+
+- `registry-server`
+- `config-server`
+- `api-gateway`
+- `user-service`
+- `order-service`
+
+## Hinglish Tutorial: Humne Implement Kaise Kiya
+
+Step 1: Dependencies add ki.
+
+Har service me ye dependencies use hoti hain:
+
+```xml
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-tracing-bridge-otel</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-exporter-otlp</artifactId>
+</dependency>
+```
+
+Meaning:
+
+- `micrometer-tracing-bridge-otel`: Spring Boot tracing ko OpenTelemetry se connect karta hai.
+- `opentelemetry-exporter-otlp`: traces ko OTLP format me collector ko bhejta hai.
+
+Step 2: Base `application.yml` me config add ki.
+
+```yaml
+management:
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+```
+
+Ye base file me hai, isliye `local`, `dev`, `prod`, `localstack` sab profiles me apply hota hai.
+
+Step 3: Collector add kiya.
+
+Collector config:
+
+```text
+docker/otel-collector/config.yml
+```
+
+Collector OTLP receive karta hai:
+
+- gRPC: `4317`
+- HTTP: `4318`
+
+Aur Zipkin ko forward karta hai:
+
+```text
+collector -> zipkin:9411
+```
+
+Step 4: Docker Compose me collector service add ki.
+
+```yaml
+otel-collector:
+  image: otel/opentelemetry-collector-contrib:0.111.0
+  ports:
+    - "4317:4317"
+    - "4318:4318"
+```
+
+Step 5: Docker full stack me app endpoint override kiya.
+
+Docker ke andar `localhost` ka matlab same container hota hai, isliye container-to-container call me service name use karte hain:
+
+```text
+http://otel-collector:4318/v1/traces
+```
+
+## Hinglish Testing: Maximum Practical Ways
+
+Test 1: Collector running hai ya nahi.
+
+```bash
+docker compose ps otel-collector
+```
+
+Expected: `running`.
+
+Test 2: Collector logs check karo.
+
+```bash
+docker compose logs --tail=50 otel-collector
+```
+
+Expected words:
+
+- `Everything is ready`
+- `TracesExporter`
+- `spans`
+
+Test 3: Health endpoints hit karo.
+
+```bash
+curl http://localhost:8761/actuator/health
+curl http://localhost:8888/actuator/health
+curl http://localhost:8080/actuator/health
+curl http://localhost:8081/actuator/health
+curl http://localhost:8082/actuator/health
+```
+
+Ye bhi traces generate kar sakta hai.
+
+Test 4: Gateway request trace.
+
+```bash
+curl http://localhost:8080/api/users
+curl http://localhost:8080/api/orders
+```
+
+Zipkin me `api-gateway`, `user-service`, `order-service` dikhna chahiye.
+
+Test 5: Multi-service business trace.
+
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Otel User\",\"email\":\"otel.user@example.com\",\"phone\":\"9876543210\"}"
+```
+
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\":1,\"productName\":\"Otel Book\",\"quantity\":1,\"price\":299.00}"
+```
+
+Ye best test hai because request gateway se order service jaati hai, aur order service user service ko call karti hai.
+
+Test 6: Zipkin API se services check karo.
+
+```bash
+curl http://localhost:9411/api/v2/services
+```
+
+Expected:
+
+```text
+api-gateway, config-server, order-service, registry-server, user-service
+```
+
+Test 7: Failure test.
+
+Collector stop karo:
+
+```bash
+docker compose stop otel-collector
+```
+
+API call karo:
+
+```bash
+curl http://localhost:8080/api/users
+```
+
+API chalni chahiye. Tracing fail ho sakti hai, but business API fail nahi honi chahiye. Ye important production behavior hai.
+
+Collector wapas start karo:
+
+```bash
+docker compose up -d otel-collector
+```
+
+Fresh request bhejo aur Zipkin me trace check karo.
+
 ## Why OpenTelemetry
 
 OpenTelemetry is the industry-standard way to collect telemetry from applications. Telemetry means traces, metrics, and logs. In this lab we use it for distributed tracing.
